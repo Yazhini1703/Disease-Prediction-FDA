@@ -1,0 +1,590 @@
+---
+title: "FDA Data Preprocessing"
+author: "21MIA1067_YazhiniR"
+date: "2024-09-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(readr)
+```
+```{r}
+# Define the list of file names
+files<- c("/Users/yazhini/Desktop/College/VIT/4th Year/SEMESTER 7/Foundations of Data Analytics/Project/Dataset/hepatitis.csv", "/Users/yazhini/Desktop/College/VIT/4th Year/SEMESTER 7/Foundations of Data Analytics/Project/Dataset/measles.csv", "/Users/yazhini/Desktop/College/VIT/4th Year/SEMESTER 7/Foundations of Data Analytics/Project/Dataset/mumps.csv", "/Users/yazhini/Desktop/College/VIT/4th Year/SEMESTER 7/Foundations of Data Analytics/Project/Dataset/pertussis.csv","/Users/yazhini/Desktop/College/VIT/4th Year/SEMESTER 7/Foundations of Data Analytics/Project/Dataset/polio.csv", "/Users/yazhini/Desktop/College/VIT/4th Year/SEMESTER 7/Foundations of Data Analytics/Project/Dataset/rubella.csv", "/Users/yazhini/Desktop/College/VIT/4th Year/SEMESTER 7/Foundations of Data Analytics/Project/Dataset/smallpox.csv")
+```
+
+
+```{r}
+# Function to read each file and combine them
+combined_data <- do.call(rbind, lapply(files, function(file) {
+  read.csv(file, stringsAsFactors = FALSE)
+}))
+```
+
+
+```{r}
+# View the combined data
+head(combined_data)
+```
+
+
+```{r}
+# Save the combined data to a new CSV file
+write.csv(combined_data, "combined_disease_data.csv", row.names = FALSE)
+```
+
+```{r}
+# Read the combined CSV file
+combined_data <- read.csv("combined_disease_data.csv", stringsAsFactors = FALSE)
+```
+
+```{r}
+# View basic structure of the dataset
+str(combined_data)
+```
+```{r}
+# 1. Check for missing values
+missing_values_summary <- sapply(combined_data, function(x) sum(is.na(x)))
+print(missing_values_summary)
+```
+```{r}
+# 2. Convert 'week' to a more readable format (if necessary)
+combined_data <- combined_data %>%
+  mutate(week_start = as.Date(paste(substr(week, 1, 4), substr(week, 5, 6), "01", sep = "-"), format = "%Y-%U-%d"))
+
+```
+
+```{r}
+# 3. Remove duplicates (if any)
+combined_data <- combined_data %>% distinct()
+```
+
+```{r}
+# 4.Ensure 'cases' and 'incidence_per_capita' are numeric
+combined_data$cases <- as.numeric(combined_data$cases)
+combined_data$incidence_per_capita <- as.numeric(combined_data$incidence_per_capita)
+install.packages("ggplot2")
+library(ggplot2)
+
+# 1. Visualize outliers using boxplots
+ggplot(combined_data, aes(x = "", y = cases)) +
+  geom_boxplot() +
+  labs(title = "Boxplot for Cases", y = "Cases") +
+  theme_minimal()
+
+```
+```{r}
+# 2. Calculate summary statistics
+summary_cases <- summary(combined_data$cases)
+summary_incidence <- summary(combined_data$incidence_per_capita)
+print(summary_cases)
+print(summary_incidence)
+
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+```{r}
+# Step 2: Ensure 'cases' and 'incidence_per_capita' are numeric
+combined_data$cases <- as.numeric(combined_data$cases)
+combined_data$incidence_per_capita <- as.numeric(combined_data$incidence_per_capita)
+```
+
+```{r}
+combined_data <- combined_data[!is.na(combined_data$cases), ]
+```
+
+```{r}
+# Step 4: Detect and Cap Outliers using IQR method
+# Define a function to cap outliers
+cap_outliers <- function(x) {
+  Q1 <- quantile(x, 0.25, na.rm = TRUE)
+  Q3 <- quantile(x, 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  x <- ifelse(x < lower_bound, lower_bound, x)
+  x <- ifelse(x > upper_bound, upper_bound, x)
+  return(x)
+}
+```
+
+```{r}
+# Apply capping for outliers in 'cases' and 'incidence_per_capita'
+combined_data$cases <- cap_outliers(combined_data$cases)
+combined_data$incidence_per_capita <- cap_outliers(combined_data$incidence_per_capita)
+```
+
+```{r}
+# Step 5: Data Transformation (Log Transformation) to reduce skewness
+# Apply log transformation (add 1 to avoid log(0))
+combined_data$log_cases <- log1p(combined_data$cases)  # log(1 + cases)
+combined_data$log_incidence <- log1p(combined_data$incidence_per_capita) 
+```
+
+```{r}
+# Step 6: Visualize the changes after log transformation
+# Boxplot after outlier capping and log transformation
+ggplot(combined_data, aes(x = "", y = log_cases)) +
+  geom_boxplot() +
+  labs(title = "Boxplot for Log Transformed Cases", y = "Log Transformed Cases") +
+  theme_minimal()
+
+ggplot(combined_data, aes(x = "", y = log_incidence)) +
+  geom_boxplot() +
+  labs(title = "Boxplot for Log Transformed Incidence per Capita", y = "Log Transformed Incidence") +
+  theme_minimal()
+```
+```{r}
+# Step 1: Check for Missing Values in the dataset
+missing_values_summary <- sapply(combined_data, function(x) sum(is.na(x)))
+print("Missing Values Summary:")
+print(missing_values_summary)
+```
+```{r}
+# Boxplot for cases after capping outliers
+boxplot(combined_data$cases, main="Boxplot for Cases After Capping Outliers", horizontal=TRUE)
+```
+```{r}
+# Boxplot for incidence_per_capita after capping outliers
+boxplot(combined_data$incidence_per_capita, main="Boxplot for Incidence per Capita After Capping Outliers", horizontal=TRUE)
+```
+```{r}
+# Step 3: Statistical summary to check the range of values
+summary(combined_data$cases)
+summary(combined_data$incidence_per_capita)
+```
+```{r}
+# Step 4: Statistical summary of log-transformed values (to check if skewness has reduced)
+summary(combined_data$log_cases)
+summary(combined_data$log_incidence)
+```
+```{r}
+install.packages("lubridate")
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+```
+```{r}
+#TREND ANALYSIS
+# Extract the year from 'week_start'
+combined_data$year <- year(combined_data$week_start)
+
+# Group by year and summarize the total cases per year
+yearly_cases <- combined_data %>%
+  group_by(year) %>%
+  summarise(total_cases = sum(cases, na.rm = TRUE))
+
+# View yearly trend summary
+head(yearly_cases)
+```
+```{r}
+# Plot total cases over time
+ggplot(yearly_cases, aes(x = year, y = total_cases)) +
+  geom_line(color = "blue") +
+  geom_point() +
+  labs(title = "Total Disease Cases Over Time", x = "Year", y = "Total Cases") +
+  theme_minimal()
+```
+```{r}
+# Group by year and disease, and summarize total cases for each disease per year
+yearly_cases_disease <- combined_data %>%
+  group_by(year, disease) %>%
+  summarise(total_cases = sum(cases, na.rm = TRUE))
+
+# View trend by disease
+head(yearly_cases_disease)
+```
+```{r}
+# Plot cases over time for each disease
+ggplot(yearly_cases_disease, aes(x = year, y = total_cases, color = disease)) +
+  geom_line() +
+  labs(title = "Trend of Disease Cases Over Time", x = "Year", y = "Total Cases") +
+  theme_minimal()
+```
+```{r}
+# Group by year and state, and summarize total cases per state per year
+yearly_cases_state <- combined_data %>%
+  group_by(year, state) %>%
+  summarise(total_cases = sum(cases, na.rm = TRUE))
+
+# View trend by state
+head(yearly_cases_state)
+```
+```{r}
+# Plot cases over time for each state
+ggplot(yearly_cases_state, aes(x = year, y = total_cases, color = state)) +
+  geom_line() +
+  labs(title = "Disease Cases Over Time by State", x = "Year", y = "Total Cases") +
+  theme_minimal()
+```
+```{r}
+# Create a heatmap of total cases by year and state
+ggplot(yearly_cases_state, aes(x = year, y = state, fill = total_cases)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title = "Heatmap of Disease Cases Across States and Time", x = "Year", y = "State") +
+  theme_minimal()
+```
+```{r}
+# Group by year and calculate mean incidence per capita for all diseases
+yearly_incidence <- combined_data %>%
+  group_by(year) %>%
+  summarise(mean_incidence_per_capita = mean(incidence_per_capita, na.rm = TRUE))
+
+# Plot mean incidence per capita over time
+ggplot(yearly_incidence, aes(x = year, y = mean_incidence_per_capita)) +
+  geom_line(color = "green") +
+  labs(title = "Mean Incidence Per Capita Over Time", x = "Year", y = "Mean Incidence Per Capita") +
+  theme_minimal()
+```
+```{r}
+#PREDICTIVE MODELLING
+install.packages("forecast")
+install.packages("randomForest")
+```
+```{r}
+library(forecast)
+library(randomForest)
+```
+
+
+```{r}
+install.packages("sf")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("tmap")
+install.packages("leaflet")
+install.packages("RColorBrewer")
+```
+
+```{r}
+library(sf)
+library(dplyr)
+library(ggplot2)
+library(tmap)
+library(leaflet)
+library(RColorBrewer)
+```
+
+```{r}
+# Convert incidence_per_capita to numeric if it's not already
+combined_data$incidence_per_capita <- as.numeric(combined_data$incidence_per_capita)
+
+# Summarize incidence_per_capita by state to get average incidence per state
+state_incidence <- combined_data %>%
+  group_by(state_name) %>%
+  summarize(avg_incidence = mean(incidence_per_capita, na.rm = TRUE))
+```
+
+```{r}
+states <- st_read(system.file("shape/nc.shp", package = "sf"), quiet = TRUE)
+```
+
+```{r}
+# Join the state-level incidence data with the spatial data
+states_incidence <- left_join(states, state_incidence, by = c("NAME" = "state_name"))
+
+# Check the structure of the merged dataset
+head(states_incidence)
+```
+```{r}
+install.packages("tseries")
+```
+```{r}
+library("tseries")
+```
+
+
+```{r}
+#TIME SERIES FORECASTING
+# AGGREGATING DATA BY YEAR
+combined_data$year <- year(combined_data$week_start)  # Extract year from date
+
+# Summing up the cases by year
+yearly_data <- combined_data %>%
+  group_by(year) %>%
+  summarise(total_cases = sum(cases, na.rm = TRUE))
+
+# View the yearly aggregated data
+head(yearly_data)
+
+# VISUALIZING TIME SERIES
+ggplot(yearly_data, aes(x = year, y = total_cases)) +
+  geom_line(color = "blue") +
+  labs(title = "Total Cases per Year", x = "Year", y = "Total Cases") +
+  theme_minimal()
+
+# ARIMA MODEL
+# Step 1: Load data as time series
+ts_data <- ts(yearly_data$total_cases, start = min(yearly_data$year), frequency = 1)
+
+# Step 2: Data Transformation (Log Transformation)
+ts_data_log <- log(ts_data)
+
+# Step 3: Check for stationarity
+adf_test <- adf.test(ts_data_log)
+print(adf_test)
+
+# Step 4: Differencing if necessary
+d <- 0  # Initialize differencing order
+if (adf_test$p.value > 0.05) {
+  d <- 1
+  ts_data_log <- diff(ts_data_log, differences = d)  # Update to differenced log series
+  adf_test_diff <- adf.test(ts_data_log)  # Check stationarity again
+  print(adf_test_diff)
+}
+
+# Step 5: Fit Auto ARIMA Model
+auto_arima_model <- auto.arima(ts_data_log, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
+summary(auto_arima_model)
+
+# Step 6: Residual Diagnostics
+checkresiduals(auto_arima_model)
+
+# Step 7: Forecasting
+forecast_horizon <- 20  # Forecasting for the next 20 periods
+forecast_arima <- forecast(auto_arima_model, h = forecast_horizon)
+
+# Step 8: Plot Forecast
+plot(forecast_arima, main = "ARIMA Forecast for Total Cases")
+
+# Step 9: Model Performance Evaluation
+accuracy_results <- accuracy(forecast_arima)
+print(accuracy_results)
+
+# Step 10: Residual Autocorrelation Check
+par(mfrow = c(1, 2))  # Set up plotting area for multiple plots
+Acf(auto_arima_model$residuals, main = "ACF of Residuals")
+Pacf(auto_arima_model$residuals, main = "PACF of Residuals")
+par(mfrow = c(1, 1))  # Reset plotting area
+```
+```{r}
+#PREDICTIVE MODELLING
+#RANDOM FOREST
+install.packages("Metrics")
+library(randomForest)
+library(caret)
+library(Metrics)
+
+# Convert 'cases' to numeric and remove NAs
+combined_data$cases <- as.numeric(combined_data$cases)
+combined_data <- na.omit(combined_data)
+
+# Convert categorical variables to factors
+combined_data$state <- as.factor(combined_data$state)
+combined_data$disease <- as.factor(combined_data$disease)
+
+# Sample a smaller dataset to avoid memory issues
+set.seed(123)
+small_data <- combined_data[sample(nrow(combined_data), 50000), ]  # Sample 50,000 rows
+
+# Train-Test Split
+trainIndex <- createDataPartition(small_data$cases, p = 0.8, list = FALSE)
+train_data <- small_data[trainIndex, ]
+test_data <- small_data[-trainIndex, ]
+
+# Random Forest Model
+rf_model <- randomForest(cases ~ week + state + disease + incidence_per_capita, 
+                         data = train_data, ntree = 500)
+
+# Predict
+rf_predictions <- predict(rf_model, test_data)
+
+# Evaluate Model
+
+# RMSE: Root Mean Squared Error
+rmse_rf <- sqrt(mean((rf_predictions - test_data$cases)^2))
+cat("Random Forest RMSE:", rmse_rf, "\n")
+
+# MAE: Mean Absolute Error
+mae_rf <- mean(abs(rf_predictions - test_data$cases))
+cat("Random Forest MAE:", mae_rf, "\n")
+
+# R-squared: Coefficient of Determination
+r_squared_rf <- R2(rf_predictions, test_data$cases)
+cat("Random Forest R-squared:", r_squared_rf, "\n")
+
+# MAPE: Mean Absolute Percentage Error
+mape_rf <- mean(abs((rf_predictions - test_data$cases) / test_data$cases)) * 100
+cat("Random Forest MAPE:", mape_rf, "%\n")
+```
+```{r}
+#XG BOOST
+# Load necessary libraries
+install.packages("gbm")
+library(gbm)
+install.packages("caret")  # For evaluation metrics
+library(caret)
+
+# Prepare Data
+combined_data$cases <- as.numeric(combined_data$cases)
+combined_data <- na.omit(combined_data)
+
+# Convert categorical variables to factors
+combined_data$state <- as.factor(combined_data$state)
+combined_data$disease <- as.factor(combined_data$disease)
+
+# Train-Test Split
+set.seed(123)
+trainIndex <- createDataPartition(combined_data$cases, p = 0.8, list = FALSE)
+train_data <- combined_data[trainIndex, ]
+test_data <- combined_data[-trainIndex, ]
+
+# Gradient Boosting Model
+gbm_model <- gbm(cases ~ week + state + disease + incidence_per_capita, 
+                 data = train_data, 
+                 distribution = "gaussian", 
+                 n.trees = 5000, 
+                 interaction.depth = 3, 
+                 shrinkage = 0.01, 
+                 cv.folds = 5)
+
+# Get best iteration based on cross-validation
+best_iter <- gbm.perf(gbm_model, method = "cv")
+
+# Predict
+gbm_predictions <- predict(gbm_model, test_data, n.trees = best_iter)
+
+# Evaluate Model
+
+# RMSE (Root Mean Squared Error)
+rmse_gbm <- sqrt(mean((gbm_predictions - test_data$cases)^2))
+cat("GBM RMSE:", rmse_gbm, "\n")
+
+# MAE (Mean Absolute Error)
+mae_gbm <- mean(abs(gbm_predictions - test_data$cases))
+cat("GBM MAE:", mae_gbm, "\n")
+
+# R-squared
+r_squared_gbm <- cor(gbm_predictions, test_data$cases)^2
+cat("GBM R-squared:", r_squared_gbm, "\n")
+
+# MAPE (Mean Absolute Percentage Error) - avoid division by zero
+mape_gbm <- mean(abs((gbm_predictions - test_data$cases) / (test_data$cases + 1))) * 100  # Adding 1 to avoid division by zero
+cat("GBM MAPE:", mape_gbm, "%\n")
+
+```
+```{r}
+#Hybrid Model
+library(randomForest)
+library(gbm)
+library(caret)
+library(Metrics)
+```
+```{r}
+# Step 1: Get predictions from both RF and GBM
+rf_predictions <- predict(rf_model, test_data)
+gbm_predictions <- predict(gbm_model, test_data, n.trees = best_iter)
+```
+
+```{r}
+# Assign weights based on RMSE (lower RMSE gets higher weight)
+rf_weight <- 1 / 3  # Random Forest gets less weight
+gbm_weight <- 2 / 3  # GBM gets more weight
+
+# Weighted averaging of predictions
+hybrid_predictions_weighted <- rf_weight * rf_predictions + gbm_weight * gbm_predictions
+
+# Evaluate the Weighted Hybrid Model
+rmse_hybrid_weighted <- sqrt(mean((hybrid_predictions_weighted - test_data$cases)^2))
+cat("Weighted Hybrid Model RMSE:", rmse_hybrid_weighted, "\n")
+
+mae_hybrid_weighted <- mean(abs(hybrid_predictions_weighted - test_data$cases))
+cat("Weighted Hybrid Model MAE:", mae_hybrid_weighted, "\n")
+
+r_squared_hybrid_weighted <- cor(hybrid_predictions_weighted, test_data$cases)^2
+cat("Weighted Hybrid Model R-squared:", r_squared_hybrid_weighted, "\n")
+
+mape_hybrid_weighted <- mean(abs((hybrid_predictions_weighted - test_data$cases) / (test_data$cases + 1))) * 100  # Avoid division by zero
+cat("Weighted Hybrid Model MAPE:", mape_hybrid_weighted, "%\n")
+```
+
+```{r}
+# Load necessary libraries
+library(randomForest)
+library(gbm)
+library(caret)
+library(Metrics)
+
+# Step 1: Reduce the dataset size by adjusting the sampling seed
+set.seed(42)  # Reduce the seed for smaller sampling
+small_data <- combined_data[sample(nrow(combined_data), 20000), ]  # Sample 20,000 rows
+
+# Step 2: Train-Test Split
+trainIndex <- createDataPartition(small_data$cases, p = 0.8, list = FALSE)
+train_data <- small_data[trainIndex, ]
+test_data <- small_data[-trainIndex, ]
+
+# Step 3: Train the Random Forest Model
+rf_model <- randomForest(cases ~ week + state + disease + incidence_per_capita, 
+                         data = train_data, ntree = 500)
+
+# Step 4: Train the GBM Model
+gbm_model <- gbm(cases ~ week + state + disease + incidence_per_capita, 
+                 data = train_data, 
+                 distribution = "gaussian", 
+                 n.trees = 5000, 
+                 interaction.depth = 3, 
+                 shrinkage = 0.01, 
+                 cv.folds = 5)
+
+# Get the best iteration based on cross-validation
+best_iter <- gbm.perf(gbm_model, method = "cv")
+
+# Step 5: Generate predictions from both models (Random Forest and GBM)
+rf_train_predictions <- predict(rf_model, train_data)
+gbm_train_predictions <- predict(gbm_model, train_data, n.trees = best_iter)
+
+# Combine the predictions from both models into a new dataset
+stacked_train_data <- data.frame(rf = rf_train_predictions, gbm = gbm_train_predictions, cases = train_data$cases)
+
+# Step 6: Train the Meta-Model (Linear Regression) on the predictions
+meta_model <- lm(cases ~ rf + gbm, data = stacked_train_data)
+
+# Step 7: Generate predictions from both models on the test data
+rf_test_predictions <- predict(rf_model, test_data)
+gbm_test_predictions <- predict(gbm_model, test_data, n.trees = best_iter)
+
+# Combine the test predictions into a new dataset for the meta-model
+stacked_test_data <- data.frame(rf = rf_test_predictions, gbm = gbm_test_predictions)
+
+# Step 8: Predict using the meta-model (linear regression)
+hybrid_predictions <- predict(meta_model, stacked_test_data)
+
+# Step 9: Implement Weighted Hybrid Model (GBM weight = 0.6, RF weight = 0.4)
+# Compute the weighted average of the predictions
+weighted_hybrid_predictions <- (0.6* gbm_test_predictions) + (0.4* rf_test_predictions)
+
+# Step 10: Evaluate the Hybrid Model
+# RMSE (Root Mean Squared Error)
+rmse_hybrid <- sqrt(mean((weighted_hybrid_predictions - test_data$cases)^2))
+cat("Hybrid Model RMSE:", rmse_hybrid, "\n")
+
+# MAE (Mean Absolute Error)
+mae_hybrid <- mean(abs(weighted_hybrid_predictions - test_data$cases))
+cat("Hybrid Model MAE:", mae_hybrid, "\n")
+
+# R-squared
+r_squared_hybrid <- cor(weighted_hybrid_predictions, test_data$cases)^2
+cat("Hybrid Model R-squared:", r_squared_hybrid, "\n")
+
+# MAPE (Mean Absolute Percentage Error)
+mape_hybrid <- mean(abs((weighted_hybrid_predictions - test_data$cases) / (test_data$cases + 1))) * 100  # Adding 1 to avoid division by zero
+cat("Hybrid Model MAPE:", mape_hybrid, "%\n")
+
+
+```
+
